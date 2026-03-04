@@ -1,17 +1,21 @@
 import argparse
 from pathlib import Path
 
-from .downloader import crawl_from_list
+from .downloader import crawl_from_list, build_url_list_from_seeds
 from .validators import UrlFilters
 from .robots import RobotsCache
-from .downloader import build_url_list_from_seeds
+
+from .textproc import TokenizeConfig, build_per_page_files
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(prog="crawler", description="HW web crawler (download raw HTML pages).")
+    parser = argparse.ArgumentParser(
+        prog="crawler",
+        description="HW web crawler (download raw HTML pages) + tokenization + lemmatization.",
+    )
     sub = parser.add_subparsers(dest="cmd", required=True)
 
-    p_build = sub.add_parser("build-list", help="Build data/urls.txt from seed pages (optional helper).")
+    p_build = sub.add_parser("build-list", help="Build urls.txt from seed pages.")
     p_build.add_argument("--seeds", required=True, type=Path, help="Path to seed_pages.txt")
     p_build.add_argument("--out", required=True, type=Path, help="Output urls.txt")
     p_build.add_argument("--max-links", type=int, default=400, help="How many links to collect")
@@ -31,8 +35,18 @@ def main() -> int:
     p_crawl.add_argument("--min-cyr-ratio", type=float, default=0.25, help="Minimal Cyrillic ratio among letters")
     p_crawl.add_argument("--respect-robots", action="store_true", help="Respect robots.txt (recommended)")
     p_crawl.add_argument("--skip-wikipedia", action="store_true", default=True, help="Skip wikipedia.org and wikimedia.org")
-    p_crawl.add_argument("--user-agent", default="Mozilla/5.0 (compatible; HW-Crawler/1.0; +https://example.com)",
-                         help="Custom User-Agent")
+    p_crawl.add_argument(
+        "--user-agent",
+        default="Mozilla/5.0 (compatible; HW-Crawler/1.0; +https://example.com)",
+        help="Custom User-Agent",
+    )
+
+    p_tp = sub.add_parser("tokens-pages", help="Create per-page tokens/ and lemmas/ txt files from saved HTML pages.")
+    p_tp.add_argument("--pages", required=True, type=Path, help="Folder with *.html (e.g. output/pages)")
+    p_tp.add_argument("--out", required=True, type=Path, help="Output folder (will create tokens/ and lemmas/ inside)")
+    p_tp.add_argument("--limit", type=int, default=102, help="How many html files to process (default 102)")
+    p_tp.add_argument("--min-len", type=int, default=2, help="Minimal token length")
+    p_tp.add_argument("--max-len", type=int, default=40, help="Max token length")
 
     args = parser.parse_args()
 
@@ -70,6 +84,30 @@ def main() -> int:
             filters=filters,
         )
         print(f"[ok] done. Check: {args.out / 'index.txt'} and {args.out / 'pages'}")
+        return 0
+
+    if args.cmd == "tokens-pages":
+        out_root: Path = args.out
+        tokens_dir = out_root / "tokens"
+        lemmas_dir = out_root / "lemmas"
+
+        cfg = TokenizeConfig(
+            min_len=args.min_len,
+            max_len=args.max_len,
+            keep_latin=False,
+        )
+
+        build_per_page_files(
+            args.pages,
+            tokens_dir=tokens_dir,
+            lemmas_dir=lemmas_dir,
+            limit=args.limit,
+            cfg=cfg,
+        )
+
+        print("[ok] per-page files created:")
+        print(f"     tokens: {tokens_dir}")
+        print(f"     lemmas: {lemmas_dir}")
         return 0
 
     return 2
