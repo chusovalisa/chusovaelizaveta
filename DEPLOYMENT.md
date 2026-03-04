@@ -52,3 +52,12 @@ python -m crawler crawl --urls data/urls.txt --out output --limit 150 --delay 1.
 ```bash
 python zip_output.py --out ./output
 ```
+
+### 3.4 Токенизация и лемматизация страниц
+```bash
+python -m crawler tokens-pages --pages output/pages --out output/text --limit 102
+```
+
+Результат после выполнения:
+- `output/text/tokens.txt` — список уникальных токенов (по одному на строку), очищенных от союзов, предлогов, чисел и мусора
+- `output/text/lemmas.txt` — список лемм с токенами в формате: `<лемма> <токен1> <токен2> ...`
