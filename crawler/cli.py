@@ -1,11 +1,20 @@
 import argparse
 from pathlib import Path
 
+import pymorphy3
+
 from .downloader import crawl_from_list, build_url_list_from_seeds
 from .validators import UrlFilters
 from .robots import RobotsCache
 
 from .textproc import TokenizeConfig, build_per_page_files
+from .search import (
+    build_inverted_index,
+    save_inverted_index,
+    load_inverted_index,
+    load_doc_urls,
+    eval_boolean_query,
+)
 
 
 def main() -> int:
@@ -47,6 +56,20 @@ def main() -> int:
     p_tp.add_argument("--limit", type=int, default=102, help="How many html files to process (default 102)")
     p_tp.add_argument("--min-len", type=int, default=2, help="Minimal token length")
     p_tp.add_argument("--max-len", type=int, default=40, help="Max token length")
+
+    p_inv = sub.add_parser("build-inverted", help="Build inverted term index from per-page lemmas/*.txt files.")
+    p_inv.add_argument("--lemmas", required=True, type=Path, help="Folder with per-page lemmas files")
+    p_inv.add_argument("--out", required=True, type=Path, help="Output file for inverted index")
+
+    p_bs = sub.add_parser("boolean-search", help="Run boolean query over an inverted index.")
+    p_bs.add_argument("--index", required=True, type=Path, help="Path to inverted index file")
+    p_bs.add_argument("--query", required=True, type=str, help="Query string with AND/OR/NOT and parentheses")
+    p_bs.add_argument(
+        "--doc-index",
+        type=Path,
+        default=None,
+        help="Optional path to output/index.txt for doc_id -> URL mapping",
+    )
 
     args = parser.parse_args()
 
@@ -108,6 +131,36 @@ def main() -> int:
         print("[ok] per-page files created:")
         print(f"     tokens: {tokens_dir}")
         print(f"     lemmas: {lemmas_dir}")
+        return 0
+
+    if args.cmd == "build-inverted":
+        index = build_inverted_index(args.lemmas)
+        save_inverted_index(index, args.out)
+        print(f"[ok] inverted index saved: {args.out}")
+        print(f"     terms: {len(index)}")
+        print(f"     docs: {len({doc for docs in index.values() for doc in docs})}")
+        return 0
+
+    if args.cmd == "boolean-search":
+        index, universe = load_inverted_index(args.index)
+        result = eval_boolean_query(
+            args.query,
+            index=index,
+            universe=universe,
+            morph=pymorphy3.MorphAnalyzer(),
+        )
+
+        print("[ok] query parsed")
+        print(f"     tokens: {' '.join(result.query_tokens)}")
+        print(f"     rpn: {' '.join(result.rpn)}")
+        print(f"     matches: {len(result.docs)}")
+
+        doc_urls = load_doc_urls(args.doc_index) if args.doc_index else {}
+        for doc_id in result.docs:
+            if doc_id in doc_urls:
+                print(f"{doc_id}\t{doc_urls[doc_id]}")
+            else:
+                print(doc_id)
         return 0
 
     return 2
