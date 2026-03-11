@@ -27,3 +27,23 @@ pip install -r requirements.txt
 ```bash
 python -m crawler tokens-pages --pages output/pages --out output/text --limit 102
 ```
+
+## Задание 3: Инвертированный индекс и булев поиск
+
+### 1. Построение инвертированного индекса
+```bash
+./.venv/bin/python -m crawler build-inverted --lemmas output/text/lemmas --out output/inverted_index.txt
+```
+
+Формат файла `output/inverted_index.txt`:
+- `<термин><TAB><doc_id_1> <doc_id_2> ...`
+
+### 2. Булев поиск (`AND`, `OR`, `NOT`, скобки)
+```bash
+./.venv/bin/python -m crawler boolean-search \
+  --index output/inverted_index.txt \
+  --query "(Клеопатра AND Цезарь) OR (Антоний AND Цицерон) OR Помпей" \
+  --doc-index output/index.txt
+```
+
+Запрос передаётся строкой через `--query`, без хардкода в коде.

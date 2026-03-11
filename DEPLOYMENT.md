@@ -61,3 +61,25 @@ python -m crawler tokens-pages --pages output/pages --out output/text --limit 10
 Результат после выполнения:
 - `output/text/tokens.txt` — список уникальных токенов (по одному на строку), очищенных от союзов, предлогов, чисел и мусора
 - `output/text/lemmas.txt` — список лемм с токенами в формате: `<лемма> <токен1> <токен2> ...`
+
+### 3.5 Построение инвертированного индекса 
+```bash
+python -m crawler build-inverted --lemmas output/text/lemmas --out output/inverted_index.txt
+```
+
+Результат после выполнения:
+- `output/inverted_index.txt` — инвертированный индекс в формате `<термин><TAB><doc_id_1> <doc_id_2> ...`
+
+### 3.6 Булев поиск по индексу 
+```bash
+python -m crawler boolean-search \
+  --index output/inverted_index.txt \
+  --query "рим AND империя" \
+  --doc-index output/index.txt
+```
+
+Поддерживаются операторы:
+- `AND`
+- `OR`
+- `NOT`
+- скобки для сложных запросов
