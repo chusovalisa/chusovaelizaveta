@@ -42,7 +42,7 @@ python -m crawler tokens-pages --pages output/pages --out output/text --limit 10
 ```bash
 ./.venv/bin/python -m crawler boolean-search \
   --index output/inverted_index.txt \
-  --query "(Клеопатра AND Цезарь) OR (Антоний AND Цицерон) OR Помпей" \
+  --query "рим AND империя" \
   --doc-index output/index.txt
 ```
 
